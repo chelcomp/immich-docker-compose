@@ -6,6 +6,16 @@ This repository contains the necessary files to run a self-hosted instance of [I
 
 > **Warning**: Immich is under very active development. Expect bugs and breaking changes. It is not recommended to use it as the only copy of your photos and videos. Always have a backup.
 
+## About This Repository
+
+This repository provides a convenient, ready-to-use setup for deploying a self-hosted Immich instance using Docker. It is intended for users who want a simple way to get started with Immich without having to manually configure the entire environment.
+
+### Key Changes and Additions
+
+- **Simplified Setup:** This repository includes a pre-configured `docker-compose.yml` file and an `.env.template` to make the initial setup as straightforward as possible.
+- **Helper Scripts:** A collection of shell scripts (`start.sh`, `stop.sh`, `restart.sh`, `update.sh`, `logs.sh`, `immich-go.sh`) are included to simplify common management tasks.
+- **Self-Contained:** All necessary files to run the application are included in this repository, making it easy to clone and deploy.
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -96,6 +106,25 @@ Immich has companion mobile apps for Android and iOS that can automatically back
 ## Configuration
 
 All configuration is done via the `.env` file. Refer to the comments in `.env.template` for a description of each variable. For more advanced configuration options, please refer to the official Immich documentation.
+
+## Performance Tuning
+
+For a smoother user experience, this `docker-compose.yml` is configured to optimize performance by separating background tasks from the main application server and prioritizing CPU resources.
+
+### Dedicated Job Containers
+
+-   **`immich-microservice`**: This container is dedicated to running background jobs like video transcoding and other processing tasks. By separating these tasks, the main `immich-server` can remain responsive to user requests.
+-   **`machine-learning`**: This container handles all machine learning tasks, such as image recognition and classification. Isolating this resource-intensive process prevents it from impacting the performance of the core application.
+
+### CPU Prioritization
+
+The `cpu_shares` option is used in the `docker-compose.yml` to allocate CPU resources:
+
+-   **`immich-server` (`cpu_shares: 2048`)**: The main server is given the highest priority to ensure the web interface and API are always fast and responsive.
+-   **`immich-microservice` (`cpu_shares: 1024`)**: The background jobs container has a lower priority than the main server.
+-   **`machine-learning` (`cpu_shares: 512`)**: The machine learning container has the lowest priority, ensuring that it only uses significant CPU resources when the system is not busy with other tasks.
+
+This configuration ensures that background processing and machine learning tasks do not slow down the user-facing parts of the application.
 
 ## Updating Your Instance
 
