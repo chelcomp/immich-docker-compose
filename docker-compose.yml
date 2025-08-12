@@ -1,0 +1,109 @@
+# docker-compose.yml for Immich
+
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    extends: 
+      file: hwaccel.transcoding.yml
+      service: vaapi 
+    group_add:
+      - "992"
+    volumes:
+      - ${UPLOAD_LOCATION}:/usr/src/app/upload
+      - ${LIBRARY_LOCATION}:/usr/src/app/upload/library
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    environment:
+      - IMMICH_WORKERS_INCLUDE:'api'
+    ports:
+      - "8083:2283"
+    depends_on:
+      - db
+      - redis
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    cpu_shares: 2048 # Default value
+
+  immich-microservice:
+    container_name: immich_microservice
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    extends: 
+      file: hwaccel.transcoding.yml
+      service: vaapi 
+    group_add:
+      - "992"
+    volumes:
+      - ${UPLOAD_LOCATION}:/usr/src/app/upload
+      - ${LIBRARY_LOCATION}:/usr/src/app/upload/library
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    environment:
+      - IMMICH_WORKERS_EXCLUDE:'api'
+    depends_on:
+      - db
+      - redis
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    cpu_shares: 1024 
+
+
+
+  # Serviço de Machine Learning (reconhecimento de imagem)
+  machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    extends: # uncomment this section for hardware acceleration - see https://immich.app/docs/features/ml-hardware-acceleration
+      file: hwaccel.ml.yml
+      service: openvino # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable
+    group_add:
+      - "992"
+    volumes:
+      - ./model-cache:/cache
+    env_file:
+      - .env
+    restart: always
+    user: "1000:1000"
+    cpu_shares: 512
+
+  # Banco de Dados PostgreSQL
+  db:
+    container_name: immich_postgres
+    image: tensorchord/pgvecto-rs:pg16-v0.2.1
+    env_file:
+      - .env
+    environment:
+      TZ: America/Sao_Paulo
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE_NAME}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    restart: always
+    cpu_shares: 1024
+
+  # Servidor de Cache Redis
+  redis:
+    container_name: immich_redis
+    image: redis:latest
+    environment:
+      TZ: America/Sao_Paulo
+    restart: always
+    cpu_shares: 1024
+
+  power-tools:
+    container_name: immich_power_tools
+    image: ghcr.io/varun-raj/immich-power-tools:latest
+    ports:
+      - "8084:3000"
+    env_file:
+      - .env
+
+#Volumes para persistência de dados
+volumes:
+  pgdata:
+  model-cache:

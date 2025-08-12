@@ -1,0 +1,8 @@
+immich-data/
+model-cache/
+pgdata/
+immich-go/
+*.bkp
+*.bkp.powertools
+GEMINI.md
+.env
